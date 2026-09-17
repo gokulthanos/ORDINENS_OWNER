@@ -72,8 +72,8 @@ export default function HolidaysScreen() {
   };
 
   const confirmDelete = async () => {
-    if (!deleteTarget) return;
-    await deleteHoliday(deleteTarget.id!);
+    if (!deleteTarget || !shop?.id) return;
+    await deleteHoliday(deleteTarget.id!, shop.id);
     setDeleteTarget(null);
     await load();
   };

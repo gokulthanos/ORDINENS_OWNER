@@ -1,10 +1,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { OwnerSession, Profile, Role } from '@/types';
+import { OwnerRecord, OwnerSession, Profile, Role } from '@/types';
 import { supabase, isSupabaseConfigured } from './supabase';
 import { isMockMode, isSupabaseMode } from './dataMode';
-import { STORAGE_KEYS, removeItem } from '@/utils/storage';
+import { STORAGE_KEYS, ownerScopedKey, readJSON, writeJSON, removeItem, uid } from '@/utils/storage';
 
 const SESSION_KEY = STORAGE_KEYS.session;
+const OWNERS_KEY = STORAGE_KEYS.owners;
 
 export interface SignInResult {
   session: OwnerSession | null;
@@ -19,7 +20,8 @@ export interface SignUpResult {
 
 function toOwnerSession(
   user: { id: string; email?: string | null; user_metadata?: Record<string, unknown> },
-  profile: Profile | null
+  profile: Profile | null,
+  shopId: string | null = null
 ): OwnerSession {
   const name =
     profile?.full_name ||
@@ -32,8 +34,58 @@ function toOwnerSession(
     phone: profile?.phone ?? (user.user_metadata?.phone as string | null) ?? null,
     role: 'owner',
     authenticated: true,
+    shopId: shopId ?? null,
   };
 }
+
+/* ---------------------------- Owner registry (mock) --------------------------- */
+
+async function getOwners(): Promise<OwnerRecord[]> {
+  return readJSON<OwnerRecord[]>(OWNERS_KEY, []);
+}
+
+async function saveOwners(list: OwnerRecord[]): Promise<void> {
+  await writeJSON(OWNERS_KEY, list);
+}
+
+async function getOwnerByEmail(email: string): Promise<OwnerRecord | null> {
+  const owners = await getOwners();
+  return owners.find((o) => o.email.toLowerCase() === email.toLowerCase()) ?? null;
+}
+
+async function getOwnerById(id: string): Promise<OwnerRecord | null> {
+  const owners = await getOwners();
+  return owners.find((o) => o.id === id) ?? null;
+}
+
+async function saveOwnerRecord(record: OwnerRecord): Promise<void> {
+  const owners = await getOwners();
+  const idx = owners.findIndex((o) => o.id === record.id);
+  if (idx >= 0) owners[idx] = record;
+  else owners.push(record);
+  await saveOwners(owners);
+}
+
+export async function updateOwnerShopId(ownerId: string, shopId: string | null): Promise<void> {
+  const owner = await getOwnerById(ownerId);
+  if (!owner) return;
+  owner.shopId = shopId;
+  await saveOwnerRecord(owner);
+  const raw = await AsyncStorage.getItem(SESSION_KEY);
+  if (raw) {
+    try {
+      const session = JSON.parse(raw) as OwnerSession;
+      if (session.id === ownerId && session.shopId !== shopId) {
+        session.shopId = shopId;
+        await writeJSON(SESSION_KEY, session);
+      }
+    } catch {
+      // best effort
+    }
+  }
+}
+
+/* ---------------------------- Supabase helpers ---------------------------- */
 
 export async function fetchProfileForUser(userId: string): Promise<Profile | null> {
   if (isMockMode() || !isSupabaseConfigured) return null;
@@ -50,19 +102,55 @@ export async function fetchProfileForUser(userId: string): Promise<Profile | nul
   }
 }
 
+async function getShopIdForSupabaseUser(userId: string): Promise<string | null> {
+  try {
+    const { data } = await supabase
+      .from('shops')
+      .select('id')
+      .eq('owner_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    return data ? String(data.id) : null;
+  } catch {
+    return null;
+  }
+}
+
+/* ---------------------------- Auth operations ---------------------------- */
+
 export async function signUpOwner(email: string, password: string, name: string, phone?: string): Promise<SignUpResult> {
   if (isMockMode() || !isSupabaseConfigured) {
-    const session: OwnerSession = {
-      id: `mock-${Date.now()}`,
-      email,
+    const existing = await getOwnerByEmail(email);
+    if (existing) return { session: null, error: 'An account with this email already exists.' };
+
+    const id = uid('OWN');
+    const shopId: string | null = null;
+    const record: OwnerRecord = {
+      id,
+      email: email.toLowerCase(),
+      password,
       name,
       phone: phone ?? null,
       role: 'owner',
-      authenticated: true,
+      shopId,
+      createdAt: new Date().toISOString(),
     };
-    await AsyncStorage.setItem(SESSION_KEY, JSON.stringify(session));
+    await saveOwnerRecord(record);
+
+    const session: OwnerSession = {
+      id,
+      email: email.toLowerCase(),
+      name: name.charAt(0).toUpperCase() + name.slice(1),
+      phone: phone ?? null,
+      role: 'owner',
+      authenticated: true,
+      shopId,
+    };
+    await writeJSON(SESSION_KEY, session);
     return { session, error: null };
   }
+
   try {
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
@@ -87,6 +175,7 @@ export async function signUpOwner(email: string, password: string, name: string,
       { onConflict: 'user_id' }
     );
 
+    const shopId = await getShopIdForSupabaseUser(userId);
     const session = toOwnerSession(user, {
       id: userId,
       user_id: userId,
@@ -96,8 +185,8 @@ export async function signUpOwner(email: string, password: string, name: string,
       profile_photo: null,
       role: 'owner',
       created_at: new Date().toISOString(),
-    });
-    await AsyncStorage.setItem(SESSION_KEY, JSON.stringify(session));
+    }, shopId);
+    await writeJSON(SESSION_KEY, session);
     return { session, error: null };
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -107,16 +196,23 @@ export async function signUpOwner(email: string, password: string, name: string,
 
 export async function signInOwner(email: string, password: string): Promise<SignInResult> {
   if (isMockMode() || !isSupabaseConfigured) {
+    const owner = await getOwnerByEmail(email);
+    if (!owner) return { session: null, error: 'No account found with this email.' };
+    if (owner.password !== password) return { session: null, error: 'Invalid login credentials.' };
+
     const session: OwnerSession = {
-      id: `mock-${Date.now()}`,
-      email,
-      name: email.split('@')[0],
+      id: owner.id,
+      email: owner.email,
+      name: owner.name,
+      phone: owner.phone ?? null,
       role: 'owner',
       authenticated: true,
+      shopId: owner.shopId,
     };
-    await AsyncStorage.setItem(SESSION_KEY, JSON.stringify(session));
+    await writeJSON(SESSION_KEY, session);
     return { session, error: null };
   }
+
   try {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error || !data.user) {
@@ -127,8 +223,9 @@ export async function signInOwner(email: string, password: string): Promise<Sign
       await supabase.auth.signOut();
       return { session: null, error: 'Access denied. This account is not an owner.' };
     }
-    const session = toOwnerSession(data.user, profile);
-    await AsyncStorage.setItem(SESSION_KEY, JSON.stringify(session));
+    const shopId = await getShopIdForSupabaseUser(data.user.id);
+    const session = toOwnerSession(data.user, profile, shopId);
+    await writeJSON(SESSION_KEY, session);
     return { session, error: null };
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -151,7 +248,24 @@ export async function restoreOwnerSession(): Promise<OwnerSession | null> {
   if (isMockMode() || !isSupabaseConfigured) {
     try {
       const raw = await AsyncStorage.getItem(SESSION_KEY);
-      return raw ? (JSON.parse(raw) as OwnerSession) : null;
+      if (!raw) return null;
+      const session = JSON.parse(raw) as OwnerSession;
+      const owner = await getOwnerById(session.id);
+      if (!owner) {
+        await removeItem(SESSION_KEY);
+        return null;
+      }
+      const refreshed: OwnerSession = {
+        id: owner.id,
+        email: owner.email,
+        name: owner.name,
+        phone: owner.phone ?? null,
+        role: 'owner',
+        authenticated: true,
+        shopId: owner.shopId,
+      };
+      await writeJSON(SESSION_KEY, refreshed);
+      return refreshed;
     } catch {
       return null;
     }
@@ -162,7 +276,8 @@ export async function restoreOwnerSession(): Promise<OwnerSession | null> {
     if (!user) return null;
     const profile = await fetchProfileForUser(user.id);
     if (profile && profile.role !== 'owner') return null;
-    const session = toOwnerSession(user, profile);
+    const shopId = await getShopIdForSupabaseUser(user.id);
+    const session = toOwnerSession(user, profile, shopId);
     await AsyncStorage.setItem(SESSION_KEY, JSON.stringify(session));
     return session;
   } catch {

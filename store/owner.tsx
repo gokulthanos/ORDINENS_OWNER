@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { BookingRules, Service, Shop, StaffMember } from '@/types';
 import { useAuth } from './auth';
+import { updateOwnerShopId } from '@/services/authService';
 import { getMyShop, createShop, updateShop, uploadShopImage, resetLocalShop } from '@/services/shopService';
 import {
   clearOnboardingDraft,
@@ -67,10 +68,13 @@ export function OwnerProvider({ children }: { children: React.ReactNode }) {
   const [drafting, setDrafting] = useState(true);
   const [bookingsVersion, setBookingsVersion] = useState(0);
 
-  const persistDraft = useCallback(async (next: OnboardingDraft) => {
-    setDraft(next);
-    await saveOnboardingDraft(next);
-  }, []);
+  const persistDraft = useCallback(
+    async (next: OnboardingDraft) => {
+      setDraft(next);
+      await saveOnboardingDraft(next, session?.id);
+    },
+    [session?.id]
+  );
 
   const refreshShop = useCallback(async () => {
     if (!session) {
@@ -89,10 +93,10 @@ export function OwnerProvider({ children }: { children: React.ReactNode }) {
 
   const loadDraft = useCallback(async () => {
     setDrafting(true);
-    const d = await loadOnboardingDraft();
+    const d = await loadOnboardingDraft(session?.id);
     setDraft(d);
     setDrafting(false);
-  }, []);
+  }, [session?.id]);
 
   useEffect(() => {
     loadDraft();
@@ -102,6 +106,7 @@ export function OwnerProvider({ children }: { children: React.ReactNode }) {
     async (input: Partial<Shop>) => {
       if (!session) throw new Error('Not signed in');
       const created = await createShop(session.id, input);
+      await updateOwnerShopId(session.id, created.id);
       setShop(created);
       return created;
     },
@@ -202,9 +207,9 @@ export function OwnerProvider({ children }: { children: React.ReactNode }) {
 
   const resetDraft = useCallback(async () => {
     setDraft(null);
-    await clearOnboardingDraft();
-    await resetLocalShop();
-  }, []);
+    await clearOnboardingDraft(session?.id);
+    await resetLocalShop(session?.id);
+  }, [session?.id]);
 
   const bumpBookings = useCallback(() => {
     setBookingsVersion((v) => v + 1);

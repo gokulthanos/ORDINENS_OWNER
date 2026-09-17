@@ -5,6 +5,7 @@ import { useTheme } from '@/constants/theme';
 import Screen from '@/components/Screen';
 import Input from '@/components/Input';
 import Button from '@/components/Button';
+import LogoImage from '@/components/LogoImage';
 import { useAuth } from '@/store/auth';
 import { required, email, minLength, phone } from '@/utils/validation';
 
@@ -53,6 +54,9 @@ export default function RegisterScreen() {
 
   return (
     <Screen title="Create your account" subtitle="Start managing your shop in minutes">
+      <View style={styles.logoWrap}>
+        <LogoImage size={88} />
+      </View>
       {errors.form ? <Text style={[styles.formError, { color: colors.danger, marginBottom: spacing.md }]}>{errors.form}</Text> : null}
       <View style={{ marginTop: spacing.lg }}>
         <Input label="Full name" value={name} onChangeText={setName} placeholder="Owner name" error={errors.name} />
@@ -103,6 +107,11 @@ export default function RegisterScreen() {
 }
 
 const styles = StyleSheet.create({
+  logoWrap: {
+    alignItems: 'center',
+    marginTop: -8,
+    marginBottom: 8,
+  },
   footer: {
     flexDirection: 'row',
     justifyContent: 'center',

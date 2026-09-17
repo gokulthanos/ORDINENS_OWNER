@@ -94,6 +94,11 @@ export function toLocalBooking(booking: Booking): Booking {
 
 /* ----------------------------- Storage ------------------------------- */
 
+function belongsToShop(booking: Booking, shopId?: string): boolean {
+  if (!shopId) return true;
+  return booking.shopId === shopId || booking.shop_id === shopId;
+}
+
 async function getLocalBookings(): Promise<Booking[]> {
   return readJSON<Booking[]>(LOCAL_KEY, []);
 }
@@ -108,7 +113,7 @@ async function setLocalBookings(list: Booking[]): Promise<Booking[]> {
 export async function getBookings(shopId?: string): Promise<Booking[]> {
   if (isMockMode() || !isSupabaseConfigured) {
     const all = await getLocalBookings();
-    return shopId ? all.filter((b) => b.shopId === shopId) : all;
+    return shopId ? all.filter((b) => belongsToShop(b, shopId)) : all;
   }
   try {
     const select = `
@@ -139,7 +144,7 @@ export async function getBookings(shopId?: string): Promise<Booking[]> {
 export async function getBooking(id: string, shopId?: string): Promise<Booking | null> {
   if (isMockMode() || !isSupabaseConfigured) {
     const all = await getLocalBookings();
-    return all.find((b) => b.id === id) || null;
+    return all.find((b) => b.id === id && belongsToShop(b, shopId)) || null;
   }
   try {
     const select = `
@@ -160,7 +165,7 @@ export async function getBooking(id: string, shopId?: string): Promise<Booking |
     console.warn('[bookingService] getBooking fallback:', (err as Error).message);
   }
   const all = await getLocalBookings();
-  return all.find((b) => b.id === id) || null;
+  return all.find((b) => b.id === id && belongsToShop(b, shopId)) || null;
 }
 
 /**
@@ -170,7 +175,7 @@ export async function getBooking(id: string, shopId?: string): Promise<Booking |
 export async function getConfirmedBookingsForDate(shopId: string, dateISO: string): Promise<Booking[]> {
   if (isMockMode() || !isSupabaseConfigured) {
     const all = await getLocalBookings();
-    return all.filter((b) => b.shopId === shopId && b.dateISO === dateISO && b.status === 'confirmed' && b.startMinute != null);
+    return all.filter((b) => belongsToShop(b, shopId) && b.dateISO === dateISO && b.status === 'confirmed' && b.startMinute != null);
   }
   try {
     const select = `
@@ -189,22 +194,26 @@ export async function getConfirmedBookingsForDate(shopId: string, dateISO: strin
   } catch (err) {
     console.warn('[bookingService] getConfirmedBookingsForDate fallback:', (err as Error).message);
     const all = await getLocalBookings();
-    return all.filter((b) => b.shopId === shopId && b.dateISO === dateISO && b.status === 'confirmed' && b.startMinute != null);
+    return all.filter((b) => belongsToShop(b, shopId) && b.dateISO === dateISO && b.status === 'confirmed' && b.startMinute != null);
   }
 }
 
 /* --------------------------- Status changes -------------------------- */
 
-async function persistLocalStatus(id: string, patch: Partial<Booking>): Promise<Booking | null> {
+async function persistLocalStatus(id: string, patch: Partial<Booking>, shopId?: string): Promise<Booking | null> {
   const list = await getLocalBookings();
   let updated: Booking | null = null;
+  let found = false;
   const next = list.map((b) => {
     if (b.id === id) {
+      found = true;
+      if (!belongsToShop(b, shopId)) return b;
       updated = { ...b, ...patch };
       return updated;
     }
     return b;
   });
+  if (!found || !updated) return null;
   await setLocalBookings(next);
   return updated;
 }
@@ -225,8 +234,9 @@ async function writeStatusHistory(bookingId: string, oldStatus: string | null, n
   }
 }
 
-export async function updateBookingStatus(id: string, status: BookingStatus, note?: string | null, allocatedBy?: string | null): Promise<Booking | null> {
-  const current = await getBooking(id);
+export async function updateBookingStatus(id: string, status: BookingStatus, note?: string | null, allocatedBy?: string | null, shopId?: string): Promise<Booking | null> {
+  const current = await getBooking(id, shopId);
+  if (!current) return null;
   const now = new Date().toISOString();
   const patch: Partial<Booking> = { status, updated_at: now };
   if (status === 'confirmed') {
@@ -235,7 +245,7 @@ export async function updateBookingStatus(id: string, status: BookingStatus, not
   if (status === 'cancelled' || status === 'declined') patch.cancelled_at = now;
 
   if (isMockMode() || !isSupabaseConfigured) {
-    const updated = await persistLocalStatus(id, patch);
+    const updated = await persistLocalStatus(id, patch, shopId);
     if (updated) {
       await writeStatusHistory(id, current?.status ?? null, status, allocatedBy ?? null, note ?? null);
     }
@@ -248,18 +258,20 @@ export async function updateBookingStatus(id: string, status: BookingStatus, not
       dbPatch.allocated_by = allocatedBy ?? current?.allocated_by ?? null;
     }
     if (status === 'cancelled' || status === 'declined') dbPatch.cancelled_at = now;
-    const { error } = await supabase.from('bookings').update(dbPatch).eq('id', id);
+    let query = supabase.from('bookings').update(dbPatch).eq('id', id);
+    if (shopId) query = query.eq('shop_id', shopId);
+    const { error } = await query;
     if (error) throw error;
     await writeStatusHistory(id, current?.status ?? null, status, allocatedBy ?? null, note ?? null);
-    const refreshed = await getBooking(id);
+    const refreshed = await getBooking(id, shopId);
     if (refreshed) {
-      await persistLocalStatus(id, refreshed);
+      await persistLocalStatus(id, refreshed, shopId);
       return refreshed;
     }
   } catch (err) {
     console.warn('[bookingService] updateBookingStatus fallback:', (err as Error).message);
   }
-  const updated = await persistLocalStatus(id, patch);
+  const updated = await persistLocalStatus(id, patch, shopId);
   if (updated) await writeStatusHistory(id, current?.status ?? null, status, allocatedBy ?? null, note ?? null);
   return updated;
 }
@@ -331,7 +343,7 @@ export async function confirmBooking(
   };
 
   if (isMockMode() || !isSupabaseConfigured) {
-    const updated = await persistLocalStatus(latest.id, patch);
+    const updated = await persistLocalStatus(latest.id, patch, deps.shop.id);
     if (updated) await writeStatusHistory(latest.id, 'pending', 'confirmed', patch.allocated_by ?? null, 'Confirmed by owner');
     return { ok: true, booking: updated ?? undefined };
   }
@@ -350,8 +362,8 @@ export async function confirmBooking(
       .eq('id', latest.id);
     if (error) throw error;
     await writeStatusHistory(latest.id, 'pending', 'confirmed', patch.allocated_by ?? null, 'Confirmed by owner');
-    const refreshed = await getBooking(latest.id);
-    if (refreshed) await persistLocalStatus(latest.id, refreshed);
+    const refreshed = await getBooking(latest.id, deps.shop.id);
+    if (refreshed) await persistLocalStatus(latest.id, refreshed, deps.shop.id);
     return { ok: true, booking: refreshed ?? undefined };
   } catch (err) {
     console.warn('[bookingService] confirmBooking:', (err as Error).message);
@@ -359,13 +371,13 @@ export async function confirmBooking(
   }
 }
 
-export async function declineBooking(bookingId: string, allocatedBy?: string | null, reason?: string): Promise<ConfirmResult> {
-  const latest = await getBooking(bookingId);
+export async function declineBooking(bookingId: string, allocatedBy?: string | null, reason?: string, shopId?: string): Promise<ConfirmResult> {
+  const latest = await getBooking(bookingId, shopId);
   if (!latest) return { ok: false, error: 'Unable to load the booking. Please try again.' };
   if (latest.status !== 'pending') {
     return { ok: false, error: 'This booking is no longer pending and cannot be declined.' };
   }
-  const updated = await updateBookingStatus(bookingId, 'declined', reason ?? null, allocatedBy ?? null);
+  const updated = await updateBookingStatus(bookingId, 'declined', reason ?? null, allocatedBy ?? null, shopId);
   return { ok: Boolean(updated), booking: updated ?? undefined, error: updated ? undefined : 'Unable to decline the booking. Please try again.' };
 }
 

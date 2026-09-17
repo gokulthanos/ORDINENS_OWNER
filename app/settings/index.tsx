@@ -6,10 +6,13 @@ import Screen from '@/components/Screen';
 import Header from '@/components/Header';
 import Card from '@/components/Card';
 import Button from '@/components/Button';
+import LogoImage from '@/components/LogoImage';
 import { useAuth } from '@/store/auth';
 import { useOwner } from '@/store/owner';
 import { isSupabaseMode } from '@/services/dataMode';
 import { isSupabaseConfigured } from '@/services/supabase';
+import { clearOnboardingDraft } from '@/services/ownerService';
+import { resetLocalShop } from '@/services/shopService';
 import { STORAGE_KEYS, removeItem } from '@/utils/storage';
 import Constants from 'expo-constants';
 
@@ -30,12 +33,12 @@ export default function SettingsScreen() {
           text: 'Clear',
           style: 'destructive',
           onPress: async () => {
-            await removeItem(STORAGE_KEYS.shop);
+            await resetLocalShop(session?.id);
             await removeItem(STORAGE_KEYS.bookings);
             await removeItem(STORAGE_KEYS.services);
             await removeItem(STORAGE_KEYS.staff);
             await removeItem(STORAGE_KEYS.holidays);
-            await removeItem(STORAGE_KEYS.onboarding);
+            await clearOnboardingDraft(session?.id);
             await refreshShop();
             Alert.alert('Done', 'Cached data cleared.');
           },
@@ -99,7 +102,13 @@ export default function SettingsScreen() {
 
         <Card>
           <Text style={[styles.section, { color: colors.textMuted }]}>About</Text>
-          <Row icon="information-circle-outline" label="App" value="Ordinens Owner" />
+          <View style={styles.brandRow}>
+            <LogoImage size={34} style={{ borderWidth: 0 }} />
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.brandName, { color: colors.text }]}>Ordinens Owner</Text>
+              <Text style={[styles.brandSub, { color: colors.textMuted }]}>Manage your shop on the go</Text>
+            </View>
+          </View>
           <Row icon="cube-outline" label="Version" value={Constants.expoConfig?.version ?? '1.0.0'} />
           <Row icon="globe-outline" label="Website" value="ordinens.tech" />
         </Card>
@@ -147,6 +156,21 @@ const styles = StyleSheet.create({
   },
   modeRow: {
     gap: 8,
+  },
+  brandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 8,
+    marginBottom: 4,
+  },
+  brandName: {
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  brandSub: {
+    fontSize: 13,
+    marginTop: 1,
   },
   modeBadge: {
     flexDirection: 'row',

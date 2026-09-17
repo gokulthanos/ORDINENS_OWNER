@@ -34,8 +34,9 @@ function toRow(staff: StaffMember, shopId: string): Record<string, unknown> {
   };
 }
 
-async function getLocalStaff(): Promise<StaffMember[]> {
-  return readJSON<StaffMember[]>(LOCAL_KEY, []);
+async function getLocalStaff(shopId?: string): Promise<StaffMember[]> {
+  const all = await readJSON<StaffMember[]>(LOCAL_KEY, []);
+  return shopId ? all.filter((s) => s.shop_id === shopId) : all;
 }
 
 async function setLocalStaff(list: StaffMember[]): Promise<StaffMember[]> {
@@ -131,20 +132,24 @@ export async function setStaffActive(id: string, shopId: string, active: boolean
   return updateStaff(id, shopId, { status: active ? 'active' : 'inactive' });
 }
 
-export async function deleteStaff(id: string): Promise<void> {
+export async function deleteStaff(id: string, shopId?: string): Promise<void> {
   if (isMockMode() || !isSupabaseConfigured) {
-    const list = await getLocalStaff();
-    await setLocalStaff(list.filter((s) => s.id !== id));
+    const all = await getLocalStaff();
+    const target = all.find((s) => s.id === id);
+    if (target && shopId && target.shop_id !== shopId && target.shopId !== shopId) return;
+    await setLocalStaff(all.filter((s) => s.id !== id));
     return;
   }
   try {
-    const { error } = await supabase.from('barbers').delete().eq('id', id);
+    let query = supabase.from('barbers').delete().eq('id', id);
+    if (shopId) query = query.eq('shop_id', shopId);
+    const { error } = await query;
     if (error) throw error;
   } catch (err) {
     console.warn('[staffService] deleteStaff:', (err as Error).message);
   }
-  const list = await getLocalStaff();
-  await setLocalStaff(list.filter((s) => s.id !== id));
+  const all = await getLocalStaff();
+  await setLocalStaff(all.filter((s) => s.id !== id));
 }
 
 const STAFF_COLORS = ['#7c5cff', '#ff7a59', '#00c2a8', '#38b6ff', '#f5b201', '#ec4899'];

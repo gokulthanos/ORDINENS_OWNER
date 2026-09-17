@@ -2,7 +2,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export const STORAGE_KEYS = {
   session: 'owner_session',
+  owners: 'owner_owners',
   shop: 'owner_shop',
+  shops: 'owner_shops',
   bookings: 'owner_bookings',
   services: 'owner_services',
   staff: 'owner_staff',
@@ -10,6 +12,10 @@ export const STORAGE_KEYS = {
   onboarding: 'owner_onboarding',
   config: 'owner_config',
 } as const;
+
+export function ownerScopedKey(base: string, ownerId: string): string {
+  return `${base}_${ownerId}`;
+}
 
 export async function readJSON<T>(key: string, fallback: T): Promise<T> {
   try {

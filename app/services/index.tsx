@@ -47,13 +47,14 @@ export default function ServicesScreen() {
   }, [load]);
 
   const toggleActive = async (service: Service) => {
-    await setServiceActive(service.id, !service.is_active);
+    if (!shop?.id) return;
+    await setServiceActive(service.id, !service.is_active, shop.id);
     await load();
   };
 
   const confirmDelete = async () => {
-    if (!deleteTarget) return;
-    await deleteService(deleteTarget.id);
+    if (!deleteTarget || !shop?.id) return;
+    await deleteService(deleteTarget.id, shop.id);
     setDeleteTarget(null);
     await load();
   };

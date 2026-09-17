@@ -5,6 +5,7 @@ import { useTheme } from '@/constants/theme';
 import Screen from '@/components/Screen';
 import Input from '@/components/Input';
 import Button from '@/components/Button';
+import LogoImage from '@/components/LogoImage';
 import { useAuth } from '@/store/auth';
 import { required, email, minLength } from '@/utils/validation';
 
@@ -43,6 +44,9 @@ export default function LoginScreen() {
 
   return (
     <Screen title="Welcome back" subtitle="Sign in to manage your shop">
+      <View style={styles.logoWrap}>
+        <LogoImage size={88} />
+      </View>
       {errors.form ? <Text style={[styles.formError, { color: colors.danger, marginBottom: spacing.md }]}>{errors.form}</Text> : null}
       <View style={{ marginTop: spacing.lg }}>
         <Input
@@ -76,6 +80,11 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
+  logoWrap: {
+    alignItems: 'center',
+    marginTop: -8,
+    marginBottom: 8,
+  },
   footer: {
     flexDirection: 'row',
     justifyContent: 'center',

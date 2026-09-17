@@ -101,10 +101,10 @@ export default function BookingDetailScreen() {
   };
 
   const doDecline = async () => {
-    if (!booking) return;
+    if (!booking || !shop?.id) return;
     setDeclineVisible(false);
     setWorking(true);
-    const result = await declineBooking(booking.id, session?.id ?? null, 'Declined by shop');
+    const result = await declineBooking(booking.id, session?.id ?? null, 'Declined by shop', shop.id);
     setWorking(false);
     if (!result.ok) {
       Alert.alert('Failed', result.error ?? 'Please try again.');
@@ -115,10 +115,10 @@ export default function BookingDetailScreen() {
   };
 
   const doCancel = async () => {
-    if (!booking) return;
+    if (!booking || !shop?.id) return;
     setCancelVisible(false);
     setWorking(true);
-    const updated = await updateBookingStatus(booking.id, 'cancelled', 'Cancelled by owner', session?.id ?? null);
+    const updated = await updateBookingStatus(booking.id, 'cancelled', 'Cancelled by owner', session?.id ?? null, shop.id);
     setWorking(false);
     if (!updated) {
       Alert.alert('Failed', 'Unable to cancel the booking.');
@@ -129,9 +129,9 @@ export default function BookingDetailScreen() {
   };
 
   const markCompleted = async () => {
-    if (!booking) return;
+    if (!booking || !shop?.id) return;
     setWorking(true);
-    const updated = await updateBookingStatus(booking.id, 'completed', 'Completed by owner', session?.id ?? null);
+    const updated = await updateBookingStatus(booking.id, 'completed', 'Completed by owner', session?.id ?? null, shop.id);
     setWorking(false);
     if (!updated) {
       Alert.alert('Failed', 'Unable to mark as completed.');

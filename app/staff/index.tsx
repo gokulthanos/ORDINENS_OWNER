@@ -53,8 +53,8 @@ export default function StaffScreen() {
   };
 
   const confirmDelete = async () => {
-    if (!deleteTarget) return;
-    await deleteStaff(deleteTarget.id);
+    if (!deleteTarget || !shop?.id) return;
+    await deleteStaff(deleteTarget.id, shop.id);
     setDeleteTarget(null);
     await load();
   };

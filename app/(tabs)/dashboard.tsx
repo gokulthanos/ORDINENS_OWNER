@@ -9,6 +9,7 @@ import StatCard from '@/components/StatCard';
 import SectionHeader from '@/components/SectionHeader';
 import EmptyState from '@/components/EmptyState';
 import BookingCard from '@/components/BookingCard';
+import LogoImage from '@/components/LogoImage';
 import { useAuth } from '@/store/auth';
 import { useOwner } from '@/store/owner';
 import { OwnerDashboard, loadOwnerDashboard } from '@/services/ownerService';
@@ -71,13 +72,16 @@ export default function DashboardScreen() {
         ListHeaderComponent={
           <View>
             <View style={styles.greetRow}>
-              <View>
-                <Text style={[styles.greet, { color: colors.text }]}>
-                  Hello, {session?.name?.split(' ')[0] ?? 'Owner'}
-                </Text>
-                <Text style={[styles.greetSub, { color: colors.textMuted }]}>
-                  {shop?.name ?? 'Your shop'}
-                </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <LogoImage size={38} style={{ borderWidth: 0 }} />
+                <View>
+                  <Text style={[styles.greet, { color: colors.text }]}>
+                    Hello, {session?.name?.split(' ')[0] ?? 'Owner'}
+                  </Text>
+                  <Text style={[styles.greetSub, { color: colors.textMuted }]}>
+                    {shop?.name ?? 'Your shop'}
+                  </Text>
+                </View>
               </View>
               <View style={[styles.statusPill, { backgroundColor: shop?.is_live ? `${colors.success}18` : `${colors.textFaint}18` }]}>
                 <View style={[styles.statusDot, { backgroundColor: shop?.is_live ? colors.success : colors.textFaint }]} />

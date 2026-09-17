@@ -31,6 +31,18 @@ export interface OwnerSession {
   phone?: string | null;
   role: 'owner';
   authenticated: boolean;
+  shopId?: string | null;
+}
+
+export interface OwnerRecord {
+  id: string;
+  email: string;
+  password: string;
+  name: string;
+  phone?: string | null;
+  role: 'owner';
+  shopId: string | null;
+  createdAt: string;
 }
 
 export interface Profile {

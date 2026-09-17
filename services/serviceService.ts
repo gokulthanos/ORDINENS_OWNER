@@ -113,8 +113,8 @@ export async function addService(shopId: string, input: Pick<Service, 'name' | '
   }
 }
 
-export async function updateService(id: string, patch: Partial<Service>): Promise<Service | null> {
-  const current = await getService(id);
+export async function updateService(id: string, patch: Partial<Service>, shopId?: string): Promise<Service | null> {
+  const current = await getService(id, shopId);
   if (!current) return null;
   const merged: Service = { ...current, ...patch, updated_at: new Date().toISOString() };
   if (isMockMode() || !isSupabaseConfigured) {
@@ -133,18 +133,22 @@ export async function updateService(id: string, patch: Partial<Service>): Promis
   return merged;
 }
 
-export async function setServiceActive(id: string, active: boolean): Promise<Service | null> {
-  return updateService(id, { is_active: active, status: active ? 'active' : 'inactive' });
+export async function setServiceActive(id: string, active: boolean, shopId?: string): Promise<Service | null> {
+  return updateService(id, { is_active: active, status: active ? 'active' : 'inactive' }, shopId);
 }
 
-export async function deleteService(id: string): Promise<void> {
+export async function deleteService(id: string, shopId?: string): Promise<void> {
   if (isMockMode() || !isSupabaseConfigured) {
     const list = await getLocalServices();
+    const target = list.find((s) => s.id === id);
+    if (target && shopId && (target.shop_id !== shopId && target.shopId !== shopId)) return;
     await setLocalServices(list.filter((s) => s.id !== id));
     return;
   }
   try {
-    const { error } = await supabase.from('services').delete().eq('id', id);
+    let query = supabase.from('services').delete().eq('id', id);
+    if (shopId) query = query.eq('shop_id', shopId);
+    const { error } = await query;
     if (error) throw error;
   } catch (err) {
     console.warn('[serviceService] deleteService:', (err as Error).message);

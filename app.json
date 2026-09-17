@@ -4,7 +4,7 @@
     "slug": "ordinens-tech-owner",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/logo/logo.png",
     "scheme": "ordinensowner",
     "userInterfaceStyle": "automatic",
     "ios": {
@@ -26,7 +26,7 @@
     },
     "web": {
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/logo/logo.png"
     },
     "plugins": [
       "expo-router",
@@ -34,7 +34,7 @@
         "expo-splash-screen",
         {
           "backgroundColor": "#0b0c14",
-          "image": "./assets/images/splash-icon.png",
+          "image": "./assets/logo/logo.png",
           "imageWidth": 120
         }
       ],

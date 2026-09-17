@@ -64,7 +64,7 @@ export default function AddServiceScreen() {
       emoji: null,
     };
     if (isEdit && id) {
-      await updateService(id, { ...input, is_active: active, status: active ? 'active' : 'inactive' });
+      await updateService(id, { ...input, is_active: active, status: active ? 'active' : 'inactive' }, shop.id);
     } else {
       await addService(shop.id, input);
     }

@@ -6,7 +6,7 @@ import { getHolidays } from './holidayService';
 import { getBookings, getDashboardStats } from './bookingService';
 import { isMockMode } from './dataMode';
 import { isSupabaseConfigured, supabase } from './supabase';
-import { STORAGE_KEYS, readJSON, writeJSON, removeItem } from '@/utils/storage';
+import { STORAGE_KEYS, ownerScopedKey, readJSON, writeJSON, removeItem } from '@/utils/storage';
 
 /* -------------------------- Onboarding draft ------------------------- */
 
@@ -18,16 +18,20 @@ export interface OnboardingDraft {
   completedSteps: string[];
 }
 
-export async function loadOnboardingDraft(): Promise<OnboardingDraft | null> {
-  return readJSON<OnboardingDraft | null>(STORAGE_KEYS.onboarding, null);
+function draftKey(ownerId?: string | null): string {
+  return ownerId ? ownerScopedKey(STORAGE_KEYS.onboarding, ownerId) : STORAGE_KEYS.onboarding;
 }
 
-export async function saveOnboardingDraft(draft: OnboardingDraft): Promise<void> {
-  await writeJSON(STORAGE_KEYS.onboarding, draft);
+export async function loadOnboardingDraft(ownerId?: string | null): Promise<OnboardingDraft | null> {
+  return readJSON<OnboardingDraft | null>(draftKey(ownerId), null);
 }
 
-export async function clearOnboardingDraft(): Promise<void> {
-  await removeItem(STORAGE_KEYS.onboarding);
+export async function saveOnboardingDraft(draft: OnboardingDraft, ownerId?: string | null): Promise<void> {
+  await writeJSON(draftKey(ownerId), draft);
+}
+
+export async function clearOnboardingDraft(ownerId?: string | null): Promise<void> {
+  await removeItem(draftKey(ownerId));
 }
 
 /* ----------------------------- Validation ---------------------------- */
@@ -244,7 +248,11 @@ export interface OwnerDashboard {
 }
 
 export async function loadOwnerDashboard(ownerId: string, shopId?: string): Promise<OwnerDashboard> {
-  const shop = shopId ? await getMyShop(ownerId).then((s) => (s && s.id !== shopId ? s : s)) : await getMyShop(ownerId);
+  let shop = await getMyShop(ownerId);
+  if (shop && shopId && shop.id !== shopId) {
+    const again = await getMyShop(ownerId);
+    if (again) shop = again;
+  }
   if (!shop) {
     return { shop: null, services: [], staff: [], holidays: [], bookingsCount: 0, todayBookings: 0, pendingBookings: 0, confirmedBookings: 0, completedBookings: 0, cancelledBookings: 0, revenue: 0 };
   }

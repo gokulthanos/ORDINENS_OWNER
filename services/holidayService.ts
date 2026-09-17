@@ -83,13 +83,14 @@ export async function addHoliday(shopId: string, input: { holiday_date: string; 
   }
 }
 
-export async function updateHoliday(id: string, patch: { holiday_date?: string; name?: string; reason?: string }): Promise<ShopHoliday | null> {
-  const current = await getLocalHolidays().then((all) => all.find((h) => h.id === id) || null);
+export async function updateHoliday(id: string, patch: { holiday_date?: string; name?: string; reason?: string }, shopId?: string): Promise<ShopHoliday | null> {
+  const all = await getLocalHolidays();
+  const current = all.find((h) => h.id === id) ?? null;
   if (!current) return null;
+  if (shopId && (current.shop_id ?? '') !== shopId) return null;
   const merged: ShopHoliday = { ...current, ...patch };
   if (isMockMode() || !isSupabaseConfigured) {
-    const list = await getLocalHolidays();
-    await setLocalHolidays(list.map((h) => (h.id === id ? merged : h)));
+    await setLocalHolidays(all.map((h) => (h.id === id ? merged : h)));
     return merged;
   }
   try {
@@ -98,23 +99,26 @@ export async function updateHoliday(id: string, patch: { holiday_date?: string; 
   } catch (err) {
     console.warn('[holidayService] updateHoliday fallback:', (err as Error).message);
   }
-  const list = await getLocalHolidays();
-  await setLocalHolidays(list.map((h) => (h.id === id ? merged : h)));
+  await setLocalHolidays(all.map((h) => (h.id === id ? merged : h)));
   return merged;
 }
 
-export async function deleteHoliday(id: string): Promise<void> {
+export async function deleteHoliday(id: string, shopId?: string): Promise<void> {
   if (isMockMode() || !isSupabaseConfigured) {
-    const list = await getLocalHolidays();
-    await setLocalHolidays(list.filter((h) => h.id !== id));
+    const all = await getLocalHolidays();
+    const target = all.find((h) => h.id === id);
+    if (target && shopId && (target.shop_id ?? '') !== shopId) return;
+    await setLocalHolidays(all.filter((h) => h.id !== id));
     return;
   }
   try {
-    const { error } = await supabase.from('shop_holidays').delete().eq('id', id);
+    let query = supabase.from('shop_holidays').delete().eq('id', id);
+    if (shopId) query = query.eq('shop_id', shopId);
+    const { error } = await query;
     if (error) throw error;
   } catch (err) {
     console.warn('[holidayService] deleteHoliday:', (err as Error).message);
   }
-  const list = await getLocalHolidays();
-  await setLocalHolidays(list.filter((h) => h.id !== id));
+  const all = await getLocalHolidays();
+  await setLocalHolidays(all.filter((h) => h.id !== id));
 }

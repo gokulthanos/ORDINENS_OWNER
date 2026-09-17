@@ -4,6 +4,7 @@ import { isMockMode } from './dataMode';
 import { STORAGE_KEYS, readJSON, writeJSON, removeItem, uid } from '@/utils/storage';
 
 const LOCAL_KEY = STORAGE_KEYS.shop;
+const SHOPS_KEY = STORAGE_KEYS.shops;
 
 export const EMPTY_WORKING_HOURS: WorkingHours = {
   sun: { open: false, start: '09:00', end: '21:00' },
@@ -112,22 +113,57 @@ export function toShopRow(shop: Shop): Record<string, unknown> {
   return row;
 }
 
-/* ------------------------------ Storage ------------------------------ */
+/* ------------------------------ Shops list storage ------------------------------ */
 
-async function localGetShop(): Promise<Shop | null> {
-  return readJSON<Shop | null>(LOCAL_KEY, null);
+async function localGetShops(): Promise<Shop[]> {
+  return readJSON<Shop[]>(SHOPS_KEY, []);
 }
 
-async function localSetShop(shop: Shop): Promise<Shop> {
-  await writeJSON(LOCAL_KEY, shop);
-  return shop;
+async function localSetShops(list: Shop[]): Promise<void> {
+  await writeJSON(SHOPS_KEY, list);
+}
+
+async function localUpsertShop(shop: Shop): Promise<void> {
+  const shops = await localGetShops();
+  const idx = shops.findIndex((s) => s.id === shop.id);
+  if (idx >= 0) shops[idx] = shop;
+  else shops.push(shop);
+  await localSetShops(shops);
+}
+
+async function localRemoveShop(shopId: string): Promise<void> {
+  const shops = await localGetShops();
+  await localSetShops(shops.filter((s) => s.id !== shopId));
+}
+
+/**
+ * Migrate a legacy single-shop storage key into the shops list if the list
+ * is empty and the legacy shop belongs to the given owner (or has no owner_id).
+ */
+async function migrateLegacyShop(ownerId: string): Promise<Shop | null> {
+  const shops = await localGetShops();
+  if (shops.length > 0) return null;
+  const legacy = await readJSON<Shop | null>(LOCAL_KEY, null);
+  if (!legacy || !legacy.id) return null;
+  const migrated: Shop = {
+    ...legacy,
+    owner_id: legacy.owner_id || ownerId,
+  };
+  await localSetShops([migrated]);
+  return migrated;
 }
 
 /* ------------------------------- Shop -------------------------------- */
 
 export async function getMyShop(ownerId?: string | null): Promise<Shop | null> {
   if (isMockMode() || !isSupabaseConfigured) {
-    return localGetShop();
+    if (!ownerId) return null;
+    await migrateLegacyShop(ownerId);
+    const shops = await localGetShops();
+    const owned = shops
+      .filter((s) => s.owner_id === ownerId)
+      .sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''));
+    return owned[0] ?? null;
   }
   try {
     let query = supabase.from('shops').select('*').order('created_at', { ascending: false });
@@ -135,17 +171,17 @@ export async function getMyShop(ownerId?: string | null): Promise<Shop | null> {
     const { data, error } = await query.limit(1).maybeSingle();
     if (error) {
       if (!String(error.message).toLowerCase().includes('does not exist')) throw error;
-      return localGetShop();
+      return null;
     }
     if (data) {
       const shop = fromShopRow(data);
-      if (shop) await writeJSON(LOCAL_KEY, shop);
+      if (shop) await localUpsertShop(shop);
       return shop;
     }
   } catch (err) {
     console.warn('[shopService] getMyShop fallback:', (err as Error).message);
   }
-  return localGetShop();
+  return null;
 }
 
 export async function createShop(ownerId: string, input: Partial<Shop>): Promise<Shop> {
@@ -179,7 +215,8 @@ export async function createShop(ownerId: string, input: Partial<Shop>): Promise
   };
 
   if (isMockMode() || !isSupabaseConfigured) {
-    return localSetShop(shop);
+    await localUpsertShop(shop);
+    return shop;
   }
   try {
     const row = toShopRow(shop);
@@ -188,33 +225,51 @@ export async function createShop(ownerId: string, input: Partial<Shop>): Promise
     if (error) throw error;
     const saved = fromShopRow(data);
     if (saved) {
-      await writeJSON(LOCAL_KEY, saved);
+      await localUpsertShop(saved);
       return saved;
     }
   } catch (err) {
     console.warn('[shopService] createShop fallback:', (err as Error).message);
   }
-  return localSetShop(shop);
+  await localUpsertShop(shop);
+  return shop;
 }
 
 export async function updateShop(shopId: string, patch: Partial<Shop>): Promise<Shop | null> {
-  const current = await getMyShop();
-  const merged: Shop = { ...(current as Shop), ...patch, id: shopId, updated_at: new Date().toISOString() };
+  const now = new Date().toISOString();
   if (isMockMode() || !isSupabaseConfigured) {
-    return localSetShop(merged);
+    const shops = await localGetShops();
+    const idx = shops.findIndex((s) => s.id === shopId);
+    if (idx === -1) return null;
+    const merged: Shop = { ...shops[idx], ...patch, id: shopId, updated_at: now };
+    shops[idx] = merged;
+    await localSetShops(shops);
+    return merged;
   }
   try {
-    const { error } = await supabase.from('shops').update(toShopRow(merged)).eq('id', shopId);
-    if (error) throw error;
+    const { data: row, error: fetchErr } = await supabase.from('shops').select('*').eq('id', shopId).maybeSingle();
+    if (fetchErr) throw fetchErr;
+    if (!row) return null;
+    const current = fromShopRow(row);
+    const merged: Shop = { ...(current as Shop), ...patch, id: shopId, updated_at: now };
+    const { error: upErr } = await supabase.from('shops').update(toShopRow(merged)).eq('id', shopId);
+    if (upErr) throw upErr;
+    await localUpsertShop(merged);
+    return merged;
   } catch (err) {
     console.warn('[shopService] updateShop fallback:', (err as Error).message);
+    const shops = await localGetShops();
+    const idx = shops.findIndex((s) => s.id === shopId);
+    if (idx === -1) return null;
+    const merged: Shop = { ...shops[idx], ...patch, id: shopId, updated_at: now };
+    shops[idx] = merged;
+    await localSetShops(shops);
+    return merged;
   }
-  return localSetShop(merged);
 }
 
 export async function setShopStatus(shopId: string, status: ShopStatus, isLive: boolean): Promise<void> {
-  const current = await getMyShop();
-  if (current) await updateShop(shopId, { status, is_live: isLive } as Partial<Shop>);
+  await updateShop(shopId, { status, is_live: isLive } as Partial<Shop>);
   if (isMockMode() || !isSupabaseConfigured) return;
   try {
     const { error } = await supabase
@@ -303,6 +358,12 @@ export async function uploadShopImage(uri: string, shopId: string): Promise<stri
   }
 }
 
-export async function resetLocalShop(): Promise<void> {
+export async function resetLocalShop(ownerId?: string | null): Promise<void> {
+  if (ownerId) {
+    const shops = await localGetShops();
+    await localSetShops(shops.filter((s) => s.owner_id !== ownerId));
+  } else {
+    await removeItem(SHOPS_KEY);
+  }
   await removeItem(LOCAL_KEY);
 }
