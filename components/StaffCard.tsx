@@ -9,7 +9,7 @@ interface StaffCardProps {
   onPress?: () => void;
 }
 
-const ROLE_COLORS = ['#6C5CE7', '#0984E3', '#00B894', '#E17055', '#D63031', '#2D3436'];
+const ROLE_COLORS = ['#f97316', '#fb923c', '#ea580c', '#fdba74', '#c2410c', '#d97706'];
 
 export default function StaffCard({ staff, onPress }: StaffCardProps) {
   const { colors } = useTheme();

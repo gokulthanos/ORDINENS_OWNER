@@ -1,13 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { OwnerSession } from '@/types';
-import {
-  restoreOwnerSession,
-  signInOwner,
-  signOutOwner,
-  signUpOwner,
-  SignInResult,
-  SignUpResult,
-} from '@/services/authService';
+import authService, { SignInResult, SignUpResult } from '@/services/authService';
 
 interface AuthContextValue {
   session: OwnerSession | null;
@@ -32,7 +25,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
-    const s = await restoreOwnerSession();
+    const s = await authService.getCurrentSession();
     setSession(s);
     setLoading(false);
   }, []);
@@ -42,19 +35,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [refresh]);
 
   const signIn = useCallback(async (email: string, password: string): Promise<SignInResult> => {
-    const result = await signInOwner(email, password);
+    const result = await authService.login(email, password);
     if (result.session) setSession(result.session);
     return result;
   }, []);
 
   const signUp = useCallback(async (email: string, password: string, name: string, phone?: string): Promise<SignUpResult> => {
-    const result = await signUpOwner(email, password, name, phone);
+    const result = await authService.signUp(email, password, name, phone);
     if (result.session) setSession(result.session);
     return result;
   }, []);
 
   const signOut = useCallback(async () => {
-    await signOutOwner();
+    await authService.logout();
     setSession(null);
   }, []);
 

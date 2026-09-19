@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { Alert, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,8 +19,27 @@ import { getBookings } from '@/services/bookingService';
 import { Booking, Service, StaffMember } from '@/types';
 import { formatINR } from '@/utils/format';
 
+interface DashboardSection {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  href: string;
+}
+
+const DASHBOARD_SECTIONS: DashboardSection[] = [
+  { icon: 'calendar-outline', label: 'Bookings', href: '/(tabs)/bookings' },
+  { icon: 'person-add-outline', label: 'Booking Requests', href: '/(tabs)/bookings' },
+  { icon: 'grid-outline', label: 'Calendar', href: '/(tabs)/calendar' },
+  { icon: 'cut-outline', label: 'Services', href: '/services' },
+  { icon: 'people-outline', label: 'Team / Barbers', href: '/staff' },
+  { icon: 'sunny-outline', label: 'Holidays', href: '/holidays' },
+  { icon: 'storefront-outline', label: 'Shop', href: '/shop' },
+  { icon: 'time-outline', label: 'Booking Rules', href: '/booking-rules' },
+  { icon: 'settings-outline', label: 'Settings', href: '/settings' },
+  { icon: 'person-outline', label: 'Profile', href: '/settings' },
+];
+
 export default function DashboardScreen() {
-  const { colors, spacing } = useTheme();
+  const { colors } = useTheme();
   const router = useRouter();
   const { session } = useAuth();
   const { shop, shopLoading, bookingsVersion, bumpBookings } = useOwner();
@@ -63,6 +82,20 @@ export default function DashboardScreen() {
 
   const bookedToday = data?.todayBookings ?? todayBookings.length;
 
+  const openSection = (section: DashboardSection) => {
+    // Shop-dependent features stay locked until the owner adds a shop.
+    if (!shopLoading && !shop) {
+      Alert.alert('Add your shop first', 'This feature unlocks once your shop is added.', [
+        { text: 'Not now', style: 'cancel' },
+        { text: 'Add Your Shop', onPress: () => router.push('/onboarding/shop') },
+      ]);
+      return;
+    }
+    router.push(section.href);
+  };
+
+  const hasShop = !!shop;
+
   return (
     <Screen scroll={false} padded>
       <FlatList
@@ -79,17 +112,36 @@ export default function DashboardScreen() {
                     Hello, {session?.name?.split(' ')[0] ?? 'Owner'}
                   </Text>
                   <Text style={[styles.greetSub, { color: colors.textMuted }]}>
-                    {shop?.name ?? 'Your shop'}
+                    {shop?.name ?? (!shopLoading && !shop ? 'No shop yet' : 'Your shop')}
                   </Text>
                 </View>
               </View>
               <View style={[styles.statusPill, { backgroundColor: shop?.is_live ? `${colors.success}18` : `${colors.textFaint}18` }]}>
-                <View style={[styles.statusDot, { backgroundColor: shop?.is_live ? colors.success : colors.textFaint }]} />
-                <Text style={[styles.statusText, { color: shop?.is_live ? colors.success : colors.textMuted }]}>
-                  {shop?.is_live ? 'Live' : 'Offline'}
+                <View style={[styles.statusDot, { backgroundColor: shop?.is_live ? colors.success : hasShop ? colors.textFaint : colors.brand }]} />
+                <Text style={[styles.statusText, { color: hasShop && !shop.is_live ? colors.textMuted : shop?.is_live ? colors.success : colors.brand }]}>
+                  {!hasShop ? 'No shop' : shop.is_live ? 'Live' : 'Offline'}
                 </Text>
               </View>
             </View>
+
+            {!hasShop && !shopLoading ? (
+              <View style={[styles.noShopCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                <View style={[styles.noShopIcon, { backgroundColor: `${colors.brand}18` }]}>
+                  <Ionicons name="storefront-outline" size={26} color={colors.brand} />
+                </View>
+                <Text style={[styles.noShopTitle, { color: colors.text }]}>No Shop Yet</Text>
+                <Text style={[styles.noShopMsg, { color: colors.textMuted }]}>
+                  Your shop has not been added yet. Add your shop to unlock more features.
+                </Text>
+                <Pressable
+                  onPress={() => router.push('/onboarding/shop')}
+                  style={[styles.addShopBtn, { backgroundColor: colors.brand }]}
+                >
+                  <Ionicons name="add" size={18} color="#fff" />
+                  <Text style={styles.addShopBtnText}>Add Your Shop</Text>
+                </Pressable>
+              </View>
+            ) : null}
 
             <View style={styles.statsRow}>
               <StatCard label="Today" value={formatNumber(bookedToday)} icon="today-outline" color={colors.brand} />
@@ -101,25 +153,59 @@ export default function DashboardScreen() {
             </View>
 
             <View style={styles.quickRow}>
-              <QuickAction icon="person-add-outline" label="Bookings" color={colors.brand} onPress={() => router.push('/(tabs)/bookings')} />
-              <QuickAction icon="cut-outline" label="Services" color={colors.brand} onPress={() => router.push('/services')} />
-              <QuickAction icon="people-outline" label="Team" color={colors.brand} onPress={() => router.push('/staff')} />
-              <QuickAction icon="calendar-outline" label="Holidays" color={colors.brand} onPress={() => router.push('/holidays')} />
+              <QuickAction icon="person-add-outline" label="Bookings" color={colors.brand} onPress={() => openSection(DASHBOARD_SECTIONS[0])} />
+              <QuickAction icon="cut-outline" label="Services" color={colors.brand} onPress={() => openSection(DASHBOARD_SECTIONS[3])} />
+              <QuickAction icon="people-outline" label="Team" color={colors.brand} onPress={() => openSection(DASHBOARD_SECTIONS[4])} />
+              <QuickAction icon="calendar-outline" label="Holidays" color={colors.brand} onPress={() => openSection(DASHBOARD_SECTIONS[5])} />
             </View>
 
-            <SectionHeader
-              title="Coming up today"
-              actionLabel="View all"
-              onAction={() => router.push('/(tabs)/bookings')}
-            />
+            <SectionHeader title="Dashboard sections" />
+
+            <View style={[styles.sectionsCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              {DASHBOARD_SECTIONS.map((section, idx) => {
+                const last = idx === DASHBOARD_SECTIONS.length - 1;
+                const locked = !shopLoading && !shop;
+                return (
+                  <Pressable
+                    key={section.label}
+                    onPress={() => openSection(section)}
+                    style={[
+                      styles.sectionRow,
+                      !last && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
+                    ]}
+                  >
+                    <View style={[styles.sectionIcon, { backgroundColor: colors.surface2 }]}>
+                      <Ionicons name={section.icon} size={18} color={locked ? colors.textFaint : colors.brand} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.sectionLabel, { color: locked ? colors.textFaint : colors.text }]}>
+                        {section.label}
+                      </Text>
+                      {locked ? (
+                        <Text style={[styles.sectionHint, { color: colors.textFaint }]}>Add your shop first</Text>
+                      ) : null}
+                    </View>
+                    <Ionicons
+                      name={locked ? 'lock-closed-outline' : 'chevron-forward'}
+                      size={16}
+                      color={locked ? colors.textFaint : colors.textMuted}
+                    />
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            {hasShop ? <SectionHeader title="Coming up today" actionLabel="View all" onAction={() => router.push('/(tabs)/bookings')} /> : null}
           </View>
         }
         ListEmptyComponent={
-          <EmptyState
-            title="No bookings today"
-            message="When customers book, they will show up here."
-            icon="partly-sunny-outline"
-          />
+          hasShop ? (
+            <EmptyState
+              title="No bookings today"
+              message="When customers book, they will show up here."
+              icon="partly-sunny-outline"
+            />
+          ) : null
         }
         renderItem={({ item }) => (
           <BookingCard
@@ -193,6 +279,46 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
   },
+  noShopCard: {
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 18,
+    alignItems: 'center',
+    marginTop: 14,
+  },
+  noShopIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  noShopTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  noShopMsg: {
+    fontSize: 13,
+    textAlign: 'center',
+    marginTop: 4,
+    lineHeight: 19,
+    maxWidth: 260,
+  },
+  addShopBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderRadius: 12,
+    paddingHorizontal: 22,
+    paddingVertical: 12,
+    marginTop: 14,
+  },
+  addShopBtnText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '700',
+  },
   statsRow: {
     flexDirection: 'row',
     gap: 10,
@@ -214,6 +340,32 @@ const styles = StyleSheet.create({
   quickLabel: {
     fontSize: 11,
     fontWeight: '600',
+  },
+  sectionsCard: {
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 6,
+  },
+  sectionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    gap: 12,
+  },
+  sectionIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sectionLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  sectionHint: {
+    fontSize: 12,
+    marginTop: 1,
   },
   offlineBanner: {
     flexDirection: 'row',

@@ -49,7 +49,7 @@ export default function RegisterScreen() {
       setErrors({ form: result.error });
       return;
     }
-    router.replace('/');
+    router.replace('/welcome');
   };
 
   return (

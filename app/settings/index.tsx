@@ -9,8 +9,6 @@ import Button from '@/components/Button';
 import LogoImage from '@/components/LogoImage';
 import { useAuth } from '@/store/auth';
 import { useOwner } from '@/store/owner';
-import { isSupabaseMode } from '@/services/dataMode';
-import { isSupabaseConfigured } from '@/services/supabase';
 import { clearOnboardingDraft } from '@/services/ownerService';
 import { resetLocalShop } from '@/services/shopService';
 import { STORAGE_KEYS, removeItem } from '@/utils/storage';
@@ -21,12 +19,10 @@ export default function SettingsScreen() {
   const { session } = useAuth();
   const { resetDraft, refreshShop } = useOwner();
 
-  const mode = isSupabaseConfigured && isSupabaseMode() ? 'supabase' : 'mock';
-
   const clearCachedData = () => {
     Alert.alert(
       'Clear cached data?',
-      'Removes the locally stored shop, bookings, services, team and holidays. Your sign-in stays. Reloads fresh data from the server when available.',
+      'Removes the locally stored shop, bookings, services, team and holidays. Your sign-in stays.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -81,15 +77,11 @@ export default function SettingsScreen() {
           <Text style={[styles.section, { color: colors.textMuted }]}>Data mode</Text>
           <View style={styles.modeRow}>
             <View style={[styles.modeBadge, { backgroundColor: colors.surface2 }]}>
-              <Ionicons name={mode === 'mock' ? 'flask-outline' : 'server-outline'} size={14} color={colors.brand} />
-              <Text style={[styles.modeText, { color: colors.text }]}>
-                {mode === 'mock' ? 'Prototype mode (local storage)' : 'Live backend (Supabase)'}
-              </Text>
+              <Ionicons name="flask-outline" size={14} color={colors.brand} />
+              <Text style={[styles.modeText, { color: colors.text }]}>Prototype mode (local storage)</Text>
             </View>
             <Text style={[styles.modeHint, { color: colors.textFaint }]}>
-              {isSupabaseConfigured
-                ? 'Backend is configured. Flip EXPO_PUBLIC_DATA_MODE in .env to "supabase" to go live.'
-                : 'Add your Supabase keys in .env to connect the backend.'}
+              Owner data is stored locally on this device. A custom backend can be connected later.
             </Text>
           </View>
         </Card>

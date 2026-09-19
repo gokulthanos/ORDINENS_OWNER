@@ -7,7 +7,9 @@ import Input from '@/components/Input';
 import Button from '@/components/Button';
 import LogoImage from '@/components/LogoImage';
 import { useAuth } from '@/store/auth';
-import { required, email, minLength } from '@/utils/validation';
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PASSWORD_PATTERN = /^(?=.*[^A-Za-z0-9]).{6,}$/;
 
 export default function LoginScreen() {
   const { colors, spacing } = useTheme();
@@ -20,26 +22,33 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
 
   const submit = async () => {
+    // TEMPORARY PROTOTYPE AUTH
+    // Accept valid email/password format only.
+    // Replace with real backend authentication before production.
     const e: typeof errors = {};
-    const nameErr = required(emailV, 'Email');
-    const emailErr = email(emailV);
-    if (nameErr) e.email = nameErr;
-    else if (emailErr) e.email = emailErr;
-    const passErr = required(password, 'Password');
-    const lenErr = minLength(password, 6, 'Password');
-    if (passErr) e.password = passErr;
-    else if (lenErr) e.password = lenErr;
+    const trimmedEmail = emailV.trim();
+
+    if (!EMAIL_PATTERN.test(trimmedEmail)) {
+      e.email = 'Please enter a valid email address.';
+    }
+
+    if (password.length < 6) {
+      e.password = 'Password must be at least 6 characters.';
+    } else if (!PASSWORD_PATTERN.test(password)) {
+      e.password = 'Password must contain at least 1 special character.';
+    }
+
     setErrors(e);
     if (Object.keys(e).length) return;
 
     setLoading(true);
-    const result = await signIn(emailV.trim().toLowerCase(), password);
+    const result = await signIn(trimmedEmail.toLowerCase(), password);
     setLoading(false);
     if (result.error) {
       setErrors({ form: result.error });
       return;
     }
-    router.replace('/');
+    router.replace('/welcome');
   };
 
   return (

@@ -10,6 +10,7 @@ import Button from '@/components/Button';
 import Input from '@/components/Input';
 import DatePickerField from '@/components/DatePickerField';
 import EmptyState from '@/components/EmptyState';
+import ShopRequiredState from '@/components/ShopRequiredState';
 import LoadingState from '@/components/LoadingState';
 import ConfirmModal from '@/components/ConfirmModal';
 import { useOwner } from '@/store/owner';
@@ -18,7 +19,7 @@ import { ShopHoliday } from '@/types';
 
 export default function HolidaysScreen() {
   const { colors, spacing } = useTheme();
-  const { shop } = useOwner();
+  const { shop, shopLoading } = useOwner();
 
   const [holidays, setHolidays] = useState<ShopHoliday[]>([]);
   const [loading, setLoading] = useState(true);
@@ -38,6 +39,8 @@ export default function HolidaysScreen() {
     setHolidays(await getHolidays(shop.id));
     setLoading(false);
   }, [shop?.id]);
+
+  const noShop = !shopLoading && !shop;
 
   useFocusEffect(
     useCallback(() => {
@@ -77,6 +80,8 @@ export default function HolidaysScreen() {
     setDeleteTarget(null);
     await load();
   };
+
+  if (noShop) return (<Screen scroll={false} padded><Header title="Holidays" /><ShopRequiredState message="Add your shop first to manage holidays." /></Screen>);
 
   if (loading && !refreshing) {
     return (

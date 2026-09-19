@@ -7,6 +7,7 @@ import { useTheme } from '@/constants/theme';
 import Screen from '@/components/Screen';
 import BookingCard from '@/components/BookingCard';
 import EmptyState from '@/components/EmptyState';
+import ShopRequiredState from '@/components/ShopRequiredState';
 import LoadingState from '@/components/LoadingState';
 import { useOwner } from '@/store/owner';
 import { getBookings } from '@/services/bookingService';
@@ -24,7 +25,7 @@ function dateKey(d: Date): string {
 export default function CalendarScreen() {
   const { colors, spacing } = useTheme();
   const router = useRouter();
-  const { shop, bookingsVersion } = useOwner();
+  const { shop, shopLoading, bookingsVersion } = useOwner();
 
   const [cursor, setCursor] = useState(() => {
     const d = new Date();
@@ -100,6 +101,10 @@ export default function CalendarScreen() {
 
   const serviceMap = useMemo(() => new Map(services.map((s) => [s.id, s])), [services]);
   const staffMap = useMemo(() => new Map(staff.map((s) => [s.id, s])), [staff]);
+
+  const noShop = !shopLoading && !shop;
+
+  if (noShop) return (<Screen scroll={false} padded><ShopRequiredState message="Your calendar fills up once your shop is added." /></Screen>);
 
   if (loading && !refreshing) return <Screen><LoadingState /></Screen>;
 

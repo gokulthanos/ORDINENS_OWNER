@@ -1,5 +1,3 @@
-import { useColorScheme } from 'react-native';
-
 export interface ColorPalette {
   brand: string;
   brandDark: string;
@@ -19,41 +17,28 @@ export interface ColorPalette {
   white: string;
 }
 
+/*
+ * ORDINENS OWNER THEME — ORANGE + WHITE
+ *
+ * A clean, modern, professional palette. Always light:
+ * no dark mode is used anywhere in the Owner Panel.
+ */
 export const LightColors: ColorPalette = {
-  brand: '#6d4dff',
-  brandDark: '#5b3de0',
-  accent: '#ec4899',
+  brand: '#f97316',
+  brandDark: '#ea580c',
+  accent: '#fb923c',
   success: '#16a34a',
   warning: '#d97706',
   danger: '#dc2626',
   info: '#0ea5e9',
-  background: '#f4f5fb',
+  background: '#fff8f2',
   surface: '#ffffff',
-  surface2: '#f0f1fb',
-  border: '#e0e2f0',
-  text: '#16182c',
-  textMuted: '#5b5f7e',
-  textFaint: '#8b8fae',
-  overlay: 'rgba(11,12,20,0.55)',
-  white: '#ffffff',
-};
-
-export const DarkColors: ColorPalette = {
-  brand: '#7c5cff',
-  brandDark: '#a855f7',
-  accent: '#ec4899',
-  success: '#22c55e',
-  warning: '#f5b201',
-  danger: '#ef4444',
-  info: '#38b6ff',
-  background: '#0b0c14',
-  surface: '#171927',
-  surface2: '#1e2033',
-  border: '#2a2d45',
-  text: '#eef0ff',
-  textMuted: '#9aa0c4',
-  textFaint: '#6a6f93',
-  overlay: 'rgba(0,0,0,0.6)',
+  surface2: '#fff1e6',
+  border: '#f0ddd0',
+  text: '#1c1917',
+  textMuted: '#57534e',
+  textFaint: '#a8a29e',
+  overlay: 'rgba(28,25,23,0.55)',
   white: '#ffffff',
 };
 
@@ -91,9 +76,10 @@ export const typography = {
 } as const;
 
 export function useTheme() {
-  const scheme = useColorScheme();
-  const isDark = scheme === 'dark';
-  const colors = isDark ? DarkColors : LightColors;
+  // The Owner Panel always uses the light Orange + White theme.
+  // Dark mode is not supported.
+  const colors = LightColors;
+  const isDark = false;
   return { colors, isDark, spacing, radius, typography };
 }
 

@@ -11,6 +11,7 @@ import Chip from '@/components/Chip';
 import Button from '@/components/Button';
 import TimePickerField from '@/components/TimePickerField';
 import SwitchRow from '@/components/SwitchRow';
+import ShopRequiredState from '@/components/ShopRequiredState';
 import LoadingState from '@/components/LoadingState';
 import { useOwner } from '@/store/owner';
 import { Shop, ShopType, DayKey, DayConfig, ShopBreak } from '@/types';
@@ -73,6 +74,15 @@ export default function ShopScreen() {
       <Screen>
         <Header title="Shop details" />
         <LoadingState />
+      </Screen>
+    );
+  }
+
+  if (!shop) {
+    return (
+      <Screen scroll={false} padded>
+        <Header title="Shop details" />
+        <ShopRequiredState message="Add your shop first to manage its details." />
       </Screen>
     );
   }

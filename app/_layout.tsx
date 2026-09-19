@@ -31,6 +31,7 @@ function RootNavigator() {
           <Stack.Screen name="auth/register" options={{ headerShown: false }} />
         </Stack.Protected>
         <Stack.Protected guard={signedIn}>
+          <Stack.Screen name="welcome" options={{ headerShown: false, animation: 'fade' }} />
           <Stack.Screen name="onboarding" options={{ headerShown: false }} />
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="bookings/[id]" options={{ headerShown: false }} />
@@ -40,6 +41,7 @@ function RootNavigator() {
           <Stack.Screen name="staff/add" options={{ headerShown: false }} />
           <Stack.Screen name="holidays/index" options={{ headerShown: false }} />
           <Stack.Screen name="shop/index" options={{ headerShown: false }} />
+          <Stack.Screen name="booking-rules" options={{ headerShown: false }} />
           <Stack.Screen name="settings/index" options={{ headerShown: false }} />
         </Stack.Protected>
       </Stack>

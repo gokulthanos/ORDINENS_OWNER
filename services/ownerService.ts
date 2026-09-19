@@ -4,8 +4,6 @@ import { getServices } from './serviceService';
 import { getStaff } from './staffService';
 import { getHolidays } from './holidayService';
 import { getBookings, getDashboardStats } from './bookingService';
-import { isMockMode } from './dataMode';
-import { isSupabaseConfigured, supabase } from './supabase';
 import { STORAGE_KEYS, ownerScopedKey, readJSON, writeJSON, removeItem } from '@/utils/storage';
 
 /* -------------------------- Onboarding draft ------------------------- */
@@ -197,33 +195,11 @@ export async function goLive(shop: Partial<Shop>, ownerId: string, rules: Bookin
       status: 'active',
       is_live: true,
     };
-    let saved: Shop | null = null;
-
-    if (isMockMode() || !isSupabaseConfigured) {
-      saved = await updateShop(shop.id, patch);
-      return saved ? { ok: true, shop: saved } : { ok: false, error: 'Unable to save the shop.' };
-    }
-
-    const { error } = await supabase
-      .from('shops')
-      .update({
-        booking_window: rules.booking_window,
-        cancellation_hours: rules.cancellation_hours,
-        capacity: rules.capacity,
-        number_of_barbers: Math.max(1, staff.length),
-        slot_interval: rules.slot_interval,
-        status: 'active',
-        is_live: true,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', shop.id)
-      .eq('owner_id', ownerId);
-    if (error) throw error;
-    saved = await getMyShop(ownerId);
+    const saved = await updateShop(shop.id, patch);
     return saved ? { ok: true, shop: saved } : { ok: false, error: 'Unable to save the shop.' };
   } catch (err) {
     console.warn('[ownerService] goLive:', (err as Error).message);
-    return { ok: false, error: 'Unable to go live. Check your connection and try again.' };
+    return { ok: false, error: 'Unable to go live. Please try again.' };
   }
 }
 

@@ -8,6 +8,7 @@ import Screen from '@/components/Screen';
 import Card from '@/components/Card';
 import SwitchRow from '@/components/SwitchRow';
 import Button from '@/components/Button';
+import ShopRequiredState from '@/components/ShopRequiredState';
 import { useAuth } from '@/store/auth';
 import { useOwner } from '@/store/owner';
 import { setShopLiveStatus } from '@/services/ownerService';
@@ -25,6 +26,7 @@ export default function MoreScreen() {
   );
 
   const loading = shopLoading || !shop;
+  const noShop = !shopLoading && !shop;
 
   const toggleLive = async (value: boolean) => {
     if (!shop) return;
@@ -57,6 +59,15 @@ export default function MoreScreen() {
   return (
     <Screen title="More" subtitle="Manage your shop and account" scroll={false}>
       <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
+        {noShop ? (
+          <Card style={{ alignItems: 'center', paddingVertical: 18 }}>
+            <ShopRequiredState
+              title="No Shop Yet"
+              message="Add your shop to unlock bookings, services, team and more."
+            />
+          </Card>
+        ) : null}
+
         <Card noPadding style={{ padding: 6 }}>
           <MenuItem icon="storefront-outline" label="Shop details" onPress={() => router.push('/shop')} last={false} />
           <MenuItem icon="cut-outline" label="Services" onPress={() => router.push('/services')} last={false} />

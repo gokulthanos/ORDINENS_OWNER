@@ -7,6 +7,7 @@ import Screen from '@/components/Screen';
 import SegmentedControl from '@/components/SegmentedControl';
 import BookingCard from '@/components/BookingCard';
 import EmptyState from '@/components/EmptyState';
+import ShopRequiredState from '@/components/ShopRequiredState';
 import LoadingState from '@/components/LoadingState';
 import { useOwner } from '@/store/owner';
 import { getBookings } from '@/services/bookingService';
@@ -26,7 +27,7 @@ const FILTERS = [
 export default function BookingsScreen() {
   const { colors } = useTheme();
   const router = useRouter();
-  const { shop, bookingsVersion } = useOwner();
+  const { shop, shopLoading, bookingsVersion } = useOwner();
 
   const [filter, setFilter] = useState('all');
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -64,6 +65,7 @@ export default function BookingsScreen() {
     setRefreshing(false);
   }, [load]);
 
+  const noShop = !shopLoading && !shop;
   const filtered = useMemo(() => {
     if (filter === 'all') return bookings;
     return bookings.filter((b) => b.status === filter);
@@ -71,6 +73,8 @@ export default function BookingsScreen() {
 
   const serviceMap = useMemo(() => new Map(services.map((s) => [s.id, s])), [services]);
   const staffMap = useMemo(() => new Map(staff.map((s) => [s.id, s])), [staff]);
+
+  if (noShop) return (<Screen scroll={false} padded><ShopRequiredState message="Booking requests appear here once your shop is added." /></Screen>);
 
   if (loading && !refreshing) return <Screen><LoadingState /></Screen>;
 

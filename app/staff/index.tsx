@@ -8,6 +8,7 @@ import Screen from '@/components/Screen';
 import Header from '@/components/Header';
 import StaffCard from '@/components/StaffCard';
 import EmptyState from '@/components/EmptyState';
+import ShopRequiredState from '@/components/ShopRequiredState';
 import LoadingState from '@/components/LoadingState';
 import ConfirmModal from '@/components/ConfirmModal';
 import { useOwner } from '@/store/owner';
@@ -17,7 +18,7 @@ import { StaffMember } from '@/types';
 export default function StaffScreen() {
   const { colors } = useTheme();
   const router = useRouter();
-  const { shop } = useOwner();
+  const { shop, shopLoading } = useOwner();
 
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [loading, setLoading] = useState(true);
@@ -32,6 +33,8 @@ export default function StaffScreen() {
     setStaff(await getStaff(shop.id));
     setLoading(false);
   }, [shop?.id]);
+
+  const noShop = !shopLoading && !shop;
 
   useFocusEffect(
     useCallback(() => {
@@ -58,6 +61,8 @@ export default function StaffScreen() {
     setDeleteTarget(null);
     await load();
   };
+
+  if (noShop) return (<Screen scroll={false} padded><Header title="Team" /><ShopRequiredState message="Add your shop first to build your team." /></Screen>);
 
   if (loading && !refreshing) {
     return (

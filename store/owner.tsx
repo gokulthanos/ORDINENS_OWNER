@@ -61,7 +61,7 @@ const OwnerContext = createContext<OwnerContextValue>({
 });
 
 export function OwnerProvider({ children }: { children: React.ReactNode }) {
-  const { session } = useAuth();
+  const { session, loading: authLoading } = useAuth();
   const [shop, setShop] = useState<Shop | null>(null);
   const [shopLoading, setShopLoading] = useState(true);
   const [draft, setDraft] = useState<OnboardingDraft | null>(null);
@@ -77,7 +77,15 @@ export function OwnerProvider({ children }: { children: React.ReactNode }) {
   );
 
   const refreshShop = useCallback(async () => {
+    // Never resolve the shop before the owner session is known. Keeping
+    // shopLoading true while auth is still resolving prevents a premature
+    // "no shop" decision that would push a logged-in owner to Add Shop Details.
+    if (authLoading) {
+      setShopLoading(true);
+      return;
+    }
     if (!session) {
+      setShop(null);
       setShopLoading(false);
       return;
     }
@@ -85,7 +93,7 @@ export function OwnerProvider({ children }: { children: React.ReactNode }) {
     const s = await getMyShop(session.id);
     setShop(s);
     setShopLoading(false);
-  }, [session]);
+  }, [session, authLoading]);
 
   useEffect(() => {
     refreshShop();

@@ -8,6 +8,7 @@ import Screen from '@/components/Screen';
 import Header from '@/components/Header';
 import ServiceCard from '@/components/ServiceCard';
 import EmptyState from '@/components/EmptyState';
+import ShopRequiredState from '@/components/ShopRequiredState';
 import LoadingState from '@/components/LoadingState';
 import ConfirmModal from '@/components/ConfirmModal';
 import { useOwner } from '@/store/owner';
@@ -17,7 +18,7 @@ import { Service } from '@/types';
 export default function ServicesScreen() {
   const { colors } = useTheme();
   const router = useRouter();
-  const { shop } = useOwner();
+  const { shop, shopLoading } = useOwner();
 
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
@@ -32,6 +33,8 @@ export default function ServicesScreen() {
     setServices(await getServices(shop.id));
     setLoading(false);
   }, [shop?.id]);
+
+  const noShop = !shopLoading && !shop;
 
   useFocusEffect(
     useCallback(() => {
@@ -58,6 +61,8 @@ export default function ServicesScreen() {
     setDeleteTarget(null);
     await load();
   };
+
+  if (noShop) return (<Screen scroll={false} padded><Header title="Services" /><ShopRequiredState message="Add your shop first to start offering services." /></Screen>);
 
   if (loading && !refreshing) {
     return (

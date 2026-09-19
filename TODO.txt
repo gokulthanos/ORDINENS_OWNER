@@ -1,0 +1,918 @@
+ORDINENS TECH — OWNER PANEL COMPLETE UPDATE
+
+Work ONLY on the OWNER PANEL.
+
+Do not modify any other application, panel, project, or unrelated files.
+
+I need to make the following changes to the Owner Panel.
+
+==================================================
+1. REMOVE ALL SUPABASE / BACKEND CONNECTIONS
+==================================================
+
+Completely remove all existing Supabase/backend service connections from the Owner Panel.
+
+Search the entire Owner Panel for:
+
+- Supabase
+- @supabase/supabase-js
+- createClient()
+- supabase.auth
+- supabase.from()
+- supabase.rpc()
+- supabase.storage
+- supabase.channel()
+- SUPABASE_URL
+- SUPABASE_ANON_KEY
+- EXPO_PUBLIC_SUPABASE_URL
+- EXPO_PUBLIC_SUPABASE_ANON_KEY
+- Any existing backend API URLs
+- Any fetch/axios calls that connect to the old backend
+
+Remove the active backend/Supabase connection logic.
+
+IMPORTANT:
+
+Do NOT delete the UI or business features that currently depend on this data.
+
+Instead, replace backend-dependent data with local MOCK DATA.
+
+After this change:
+
+The Owner Panel must work completely without:
+- Supabase
+- External backend
+- Internet connection
+
+==================================================
+2. REPLACE BACKEND DATA WITH MOCK DATA
+==================================================
+
+Create a clean local mock-data layer.
+
+For example:
+
+mock/
+    ownerData
+    shopData
+    serviceData
+    bookingData
+    workingHoursData
+    breakData
+    holidayData
+
+OR use the existing project structure if a better structure already exists.
+
+The mock data should support the existing Owner Panel screens.
+
+Include realistic sample data for:
+
+- Owner
+- Shop
+- Services
+- Working Hours
+- Breaks
+- Holidays
+- Number of Barbers / Capacity
+- Bookings
+- Booking Requests
+- Customer information
+- Booking status
+- Dashboard statistics
+
+IMPORTANT:
+
+Do not hardcode data directly inside UI components.
+
+Keep mock data separate from screens/components.
+
+==================================================
+3. OWNER LOGIN MUST BE THE FIRST SCREEN
+==================================================
+
+CURRENT PROBLEM:
+
+When opening the Owner Panel, it directly opens:
+
+"Add Shop Details"
+
+This must be fixed.
+
+The application must ALWAYS check authentication first.
+
+Correct flow:
+
+OPEN APP
+   ↓
+LOGIN PAGE
+   ↓
+EMAIL + PASSWORD
+   ↓
+LOGIN SUCCESS
+   ↓
+WELCOME ANIMATION
+   ↓
+OWNER DASHBOARD
+
+If the owner has no shop:
+
+Dashboard should still open.
+
+The dashboard should show:
+
+"No Shop Yet"
+
+and:
+
+"Add Your Shop"
+
+==================================================
+4. LOGIN PAGE
+==================================================
+
+Create/keep a proper Owner Login Page.
+
+The Login Page must contain:
+
+- Email input
+- Password input
+- Login button
+
+Use the existing Owner Panel branding/logo.
+
+Do not automatically skip the Login Page.
+
+Do not automatically open Add Shop Details.
+
+Do not automatically create a shop.
+
+==================================================
+5. LOGIN VALIDATION
+==================================================
+
+For the temporary mock-data version:
+
+Accept any properly formatted email.
+
+Email validation:
+
+^[^\s@]+@[^\s@]+\.[^\s@]+$
+
+Password requirements:
+
+- Minimum 6 characters
+- At least 1 special character
+
+Password validation:
+
+^(?=.*[^A-Za-z0-9]).{6,}$
+
+Examples:
+
+owner@gmail.com
+Owner@123
+
+→ Valid
+
+test@gmail.com
+Test@123
+
+→ Valid
+
+Invalid email:
+
+owner
+
+→ Reject
+
+Invalid password:
+
+abcdef
+
+→ Reject
+
+==================================================
+6. DO NOT USE HARDCODED CREDENTIALS
+==================================================
+
+Do NOT create credentials such as:
+
+owner123
+admin123
+admin@gmail.com
+password123
+
+Do NOT compare the entered email/password with a fixed credential.
+
+Any valid email/password format should be accepted for this temporary mock authentication.
+
+Add a code comment:
+
+// TEMPORARY MOCK AUTH
+// No real backend authentication is currently connected.
+// Replace with the real backend authentication later.
+
+==================================================
+7. LOGIN SESSION
+==================================================
+
+After successful login, create a local owner session.
+
+Example:
+
+{
+    id: "mock-owner-001",
+    email: "owner@gmail.com",
+    role: "owner",
+    authenticated: true
+}
+
+The session can use the existing local storage/session architecture of the project.
+
+If there is no valid session:
+
+→ Show Login Page.
+
+Do NOT automatically show Add Shop Details.
+
+==================================================
+8. WELCOME OWNER ANIMATION
+==================================================
+
+After successful login, show a short welcome animation BEFORE opening the dashboard.
+
+Example:
+
+"Welcome, Owner"
+
+Then:
+
+"Welcome, Gokul"
+
+Use the username derived from the email.
+
+For example:
+
+gokul@gmail.com
+
+→
+
+Welcome, Gokul
+
+The animation should be:
+
+- Simple
+- Professional
+- Smooth
+- Mobile-friendly
+- Short
+- Not excessive
+
+Suggested flow:
+
+Login Success
+      ↓
+Logo / subtle animation
+      ↓
+"Welcome, Owner"
+      ↓
+"Welcome, Gokul"
+      ↓
+Dashboard
+
+Do not make the animation too long.
+
+Approximately 1–2 seconds is enough.
+
+==================================================
+9. OWNER DASHBOARD
+==================================================
+
+After the welcome animation:
+
+Open the Owner Dashboard.
+
+The dashboard should show ALL major Owner Panel sections.
+
+Do not hide the dashboard just because the owner has not added a shop yet.
+
+The main dashboard should contain sections/cards for:
+
+- Shop
+- Services
+- Working Hours
+- Breaks
+- Holidays
+- Number of Barbers / Capacity
+- Booking Rules
+- Bookings
+- Booking Requests
+- Calendar
+- Settings
+- Profile
+
+Use the existing Owner Panel features.
+
+==================================================
+10. NO SHOP YET STATE
+==================================================
+
+If the logged-in owner has not created a shop yet:
+
+The dashboard must show a clear empty state.
+
+Example:
+
+NO SHOP YET
+
+"Your shop hasn't been added yet."
+
+Button:
+
+"+ Add Your Shop"
+
+or:
+
+"Add Your Shop"
+
+This should appear prominently on the main dashboard.
+
+==================================================
+11. SHOP NOT CREATED → FEATURES LOCKED
+==================================================
+
+If the owner has no shop:
+
+The owner can view the dashboard.
+
+But shop-dependent features should show an appropriate locked/disabled state.
+
+For example:
+
+Services
+→ "Add your shop first"
+
+Working Hours
+→ "Add your shop first"
+
+Breaks
+→ "Add your shop first"
+
+Holidays
+→ "Add your shop first"
+
+Booking Rules
+→ "Add your shop first"
+
+Bookings
+→ "Add your shop first"
+
+The owner should NOT be taken directly to random setup screens when opening the app.
+
+The dashboard is always the main screen after login.
+
+==================================================
+12. ADD YOUR SHOP
+==================================================
+
+When the owner taps:
+
+"Add Your Shop"
+
+open the existing Shop Registration / Shop Details flow.
+
+The shop form should contain the existing required fields:
+
+- Shop Name
+- Shop Type
+- Contact Number
+- Address
+- Description
+
+Keep the existing shop registration functionality.
+
+==================================================
+13. AFTER SHOP CREATION
+==================================================
+
+After the owner successfully adds the shop:
+
+Return to the Owner Dashboard.
+
+The dashboard should now display the shop information.
+
+The empty state:
+
+"No Shop Yet"
+
+must disappear.
+
+The previously locked shop-dependent features should become available.
+
+Flow:
+
+Login
+ ↓
+Welcome Animation
+ ↓
+Dashboard
+ ↓
+No Shop Yet
+ ↓
+Add Your Shop
+ ↓
+Shop Registration
+ ↓
+Save Shop
+ ↓
+Dashboard
+ ↓
+Shop Active
+ ↓
+Features Enabled
+
+==================================================
+14. MOCK SHOP DATA
+==================================================
+
+For testing, create a mock shop state.
+
+Example:
+
+{
+    id: "mock-shop-001",
+    ownerId: "mock-owner-001",
+    name: "Gokul Men's Studio",
+    type: "Barber Shop",
+    contact: "9876543210",
+    address: "Coimbatore",
+    description: "Professional men's grooming"
+}
+
+But do NOT force this shop to exist automatically.
+
+The initial state for a new owner should be:
+
+shop = null
+
+so that the dashboard can correctly show:
+
+"No Shop Yet"
+
+==================================================
+15. OWNER DASHBOARD UI
+==================================================
+
+Change the entire Owner Panel theme to:
+
+ORANGE + WHITE
+
+Use a clean, modern, professional style.
+
+Primary:
+
+Orange
+
+Background:
+
+White / very light neutral
+
+Text:
+
+Dark/black
+
+Do not use the old theme.
+
+Do not introduce dark mode.
+
+==================================================
+16. ORANGE + WHITE THEME
+==================================================
+
+Apply the new theme consistently to:
+
+- Login
+- Welcome animation
+- Dashboard
+- Header
+- Navigation
+- Buttons
+- Cards
+- Forms
+- Inputs
+- Active states
+- Icons
+- Tabs
+- Shop sections
+- Services
+- Bookings
+- Settings
+
+Create centralized theme constants if the project does not already have them.
+
+For example:
+
+primary: Orange
+background: White
+surface: White
+text: Dark
+border: Light gray
+
+Do NOT randomly use multiple shades of orange.
+
+Keep the theme consistent.
+
+==================================================
+17. LOGIN PAGE DESIGN
+==================================================
+
+The Login Page should follow the same Orange + White theme.
+
+Structure:
+
+Logo
+
+Welcome / Owner Login
+
+Email
+[________________]
+
+Password
+[________________]
+
+[ LOGIN ]
+
+Keep it clean and professional.
+
+Do not add unnecessary decorative elements.
+
+==================================================
+18. DASHBOARD DESIGN
+==================================================
+
+The dashboard should be clean and mobile-friendly.
+
+Suggested structure:
+
+Header
+↓
+Welcome Owner
+↓
+Shop Status
+↓
+"No Shop Yet"
+"Add Your Shop"
+↓
+Dashboard Sections
+↓
+Bookings
+↓
+Services
+↓
+Working Hours
+↓
+Holidays
+↓
+Settings
+
+Use the existing navigation architecture wherever possible.
+
+==================================================
+19. MOCK DATA ARCHITECTURE
+==================================================
+
+Do NOT place mock data directly inside UI components.
+
+Use a separate layer such as:
+
+mockData/
+    owner.ts
+    shops.ts
+    services.ts
+    bookings.ts
+    workingHours.ts
+    holidays.ts
+
+and services such as:
+
+ownerService
+shopService
+bookingService
+serviceService
+
+The UI should communicate with these services.
+
+This makes it easy to replace the mock layer with the real backend later.
+
+Architecture:
+
+Owner UI
+   ↓
+Service Layer
+   ↓
+Mock Data
+
+Later:
+
+Owner UI
+   ↓
+Service Layer
+   ↓
+Real Backend API
+   ↓
+Database
+
+==================================================
+20. DO NOT CREATE THE REAL BACKEND NOW
+==================================================
+
+Do NOT create:
+
+- Node backend
+- Express backend
+- FastAPI backend
+- PostgreSQL server
+- MySQL server
+- REST API server
+
+Only create the mock-data/service layer required for the Owner Panel to function locally.
+
+The real backend will be created later.
+
+==================================================
+21. REMOVE OLD SUPABASE ERRORS
+==================================================
+
+After removing Supabase:
+
+The Owner Panel must NOT show:
+
+UnknownHostException
+Supabase connection errors
+Network errors caused by Supabase
+Authentication errors from Supabase
+
+The app should work using local mock data.
+
+==================================================
+22. PRESERVE EXISTING OWNER FEATURES
+==================================================
+
+Do not delete existing Owner Panel functionality.
+
+Preserve:
+
+- Login
+- Owner registration
+- Shop registration
+- Dashboard
+- Working Hours
+- Break Management
+- Number of Barbers
+- Services
+- Booking Rules
+- Holidays
+- Bookings
+- Customer Booking Requests
+- Time Allocation
+- Confirm / Decline
+- Calendar
+- Settings
+- Profile
+- Logout
+
+Only change the data source from Supabase/backend to mock data.
+
+==================================================
+23. LOGOUT
+==================================================
+
+Logout must:
+
+- Clear the local owner session
+- Return to Login Page
+
+After logout:
+
+Do NOT open Dashboard.
+
+Do NOT open Add Shop Details.
+
+The next screen must be:
+
+Login Page.
+
+==================================================
+24. APP STARTUP LOGIC
+==================================================
+
+The startup logic must be:
+
+APP START
+   ↓
+Check local owner session
+   ↓
+No session
+   → LOGIN
+   ↓
+Valid session
+   → WELCOME ANIMATION
+   ↓
+OWNER DASHBOARD
+
+Do NOT check shop existence before authentication.
+
+Do NOT redirect unauthenticated users to Add Shop Details.
+
+==================================================
+25. FINAL TESTING
+==================================================
+
+Test the following scenarios.
+
+TEST 1:
+
+Fresh app launch.
+
+Expected:
+
+Login Page.
+
+NOT Add Shop Details.
+
+--------------------------------------------------
+
+TEST 2:
+
+Enter:
+
+Email:
+gokul@gmail.com
+
+Password:
+Gokul@123
+
+Expected:
+
+Login successful.
+
+--------------------------------------------------
+
+TEST 3:
+
+After login:
+
+Expected:
+
+Welcome, Owner
+↓
+Welcome, Gokul
+↓
+Dashboard
+
+--------------------------------------------------
+
+TEST 4:
+
+New owner without shop.
+
+Expected dashboard:
+
+"No Shop Yet"
+
+"Add Your Shop"
+
+--------------------------------------------------
+
+TEST 5:
+
+Tap Add Your Shop.
+
+Expected:
+
+Shop registration page opens.
+
+--------------------------------------------------
+
+TEST 6:
+
+Create shop.
+
+Expected:
+
+Return to Dashboard.
+
+"No Shop Yet" disappears.
+
+Shop information appears.
+
+Shop-dependent features become enabled.
+
+--------------------------------------------------
+
+TEST 7:
+
+Logout.
+
+Expected:
+
+Login Page.
+
+--------------------------------------------------
+
+TEST 8:
+
+Reload app without a session.
+
+Expected:
+
+Login Page.
+
+--------------------------------------------------
+
+TEST 9:
+
+Reload app with a valid local session.
+
+Expected:
+
+Owner Dashboard.
+
+--------------------------------------------------
+
+TEST 10:
+
+Turn off internet.
+
+Expected:
+
+Owner Panel still works because it uses local mock data and does not depend on Supabase.
+
+==================================================
+26. FINAL CLEANUP
+==================================================
+
+After implementation:
+
+Search the Owner Panel for:
+
+supabase
+Supabase
+createClient
+SUPABASE_URL
+SUPABASE_ANON_KEY
+EXPO_PUBLIC_SUPABASE_URL
+EXPO_PUBLIC_SUPABASE_ANON_KEY
+
+Remove all active Supabase/backend references.
+
+Also check for old theme colors and replace them with the new Orange + White theme.
+
+==================================================
+FINAL REQUIREMENT
+==================================================
+
+The final Owner Panel must work like this:
+
+OPEN APP
+   ↓
+LOGIN PAGE
+   ↓
+EMAIL + PASSWORD
+   ↓
+LOGIN
+   ↓
+WELCOME OWNER ANIMATION
+   ↓
+OWNER DASHBOARD
+   ↓
+┌─────────────────────────────┐
+│ No Shop Yet                 │
+│                             │
+│ Add your shop to unlock     │
+│ more features               │
+│                             │
+│       + Add Your Shop       │
+└─────────────────────────────┘
+   ↓
+Add Shop
+   ↓
+Dashboard
+   ↓
+All shop features enabled
+
+The entire Owner Panel must use:
+
+ORANGE + WHITE THEME
+
+and:
+
+LOCAL MOCK DATA
+
+instead of Supabase/backend.
+
+IMPORTANT:
+
+WORK ONLY ON THE OWNER PANEL.
+
+Do not modify anything outside the Owner Panel.
